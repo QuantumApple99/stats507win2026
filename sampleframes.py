@@ -12,7 +12,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import os
 
 
-# In[8]:
+# In[2]:
 
 
 BASE_PATH = "/Users/quantumapple/Desktop/Masters/DATASCI507/stats507win2026/"  
@@ -20,7 +20,7 @@ FRAME_ID  = "000010"
 
 def load_image(frame_id):
     path = os.path.join(BASE_PATH,"data_object_image_2/training/","image_2", f"{frame_id}.png")
-    img  = plt.imread(path)              # returns H×W×3 float array (0–1 range)
+    img  = plt.imread(path)
     return img
 
 def show_image(img, title="KITTI Camera Frame"):
@@ -33,7 +33,7 @@ def show_image(img, title="KITTI Camera Frame"):
     print(f"Image shape: {img.shape}  →  Height={img.shape[0]}px, Width={img.shape[1]}px, Channels={img.shape[2]}")
 
 
-# In[13]:
+# In[3]:
 
 
 def load_lidar(frame_id):
@@ -75,7 +75,7 @@ def show_lidar_topdown(points, max_range=40.0):
     plt.show()
 
 
-# In[17]:
+# In[4]:
 
 
 # KITTI label columns (one object per row):
@@ -139,7 +139,7 @@ def show_image_with_boxes(img, df):
     plt.show()
 
 
-# In[18]:
+# In[5]:
 
 
 def load_calib(frame_id):
@@ -170,26 +170,32 @@ def show_calib(calib):
     print("Tr_velo_to_cam: Transforms LiDAR (Velodyne) coords → Camera coords  ← KEY for fusion")
 
 
-# In[19]:
+# In[6]:
 
 
- # Step 1 — Image
+ #Image
 img = load_image(FRAME_ID)
 show_image(img)
 
-# Step 2 — LiDAR
+#LiDAR
 points = load_lidar(FRAME_ID)
 show_lidar_info(points)
 show_lidar_topdown(points)
 
-# Step 3 — Labels
+#Labels
 df = load_labels(FRAME_ID)
 show_labels(df)
 show_image_with_boxes(img, df)
 
-# Step 4 — Calibration
+#Calibration
 calib = load_calib(FRAME_ID)
 show_calib(calib)
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:

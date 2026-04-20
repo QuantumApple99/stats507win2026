@@ -24,9 +24,7 @@ MAX_DEPTH     = 60.0     # metres — clip depth values beyond this for display
 # In[3]:
 
 
-# =============================================================================
-# COMPONENT 1 — Coordinate transformation pipeline
-# =============================================================================
+#Coordinate transformation pipeline
 def build_projection_matrix(calib):
     """
     Builds the full 3D→2D projection matrix by chaining three calibration matrices.
@@ -36,7 +34,7 @@ def build_projection_matrix(calib):
                     →[R0_rect]        →  Rectified camera 3D coords
                     →[P2]             →  2D image pixel coords
 
-    Mathematically: pixel = P2 @ R0_rect @ Tr_velo_to_cam @ lidar_point
+    pixel = P2 @ R0_rect @ Tr_velo_to_cam @ lidar_point
 
     Each matrix reshaped to:
       Tr_velo_to_cam : (3, 4)  — rotation + translation from LiDAR to camera
@@ -70,12 +68,6 @@ def project_lidar_to_image(points, proj_matrix, img_shape):
       3. Divide by w (perspective division) → get pixel coords (u/w, v/w)
       4. Filter out points that fall outside the image boundaries
          or are behind the camera (w <= 0)
-
-    Returns:
-      u_valid   : pixel column coords (x) for valid points
-      v_valid   : pixel row coords    (y) for valid points
-      depth     : distance in metres for each valid point
-      valid_idx : indices into original points array
     """
     H, W = img_shape[:2]
     N    = points.shape[0]
@@ -105,9 +97,7 @@ def project_lidar_to_image(points, proj_matrix, img_shape):
 # In[4]:
 
 
-# =============================================================================
-# COMPONENT 2 — Build depth map
-# =============================================================================
+#Build depth map
 def build_depth_map(img_shape, u, v, depth):
     """
     Creates a dense-ish depth map by painting projected LiDAR depths
@@ -115,9 +105,6 @@ def build_depth_map(img_shape, u, v, depth):
 
     The depth map is sparse — only pixels where a LiDAR beam landed
     have a value. Everything else stays 0 (unknown depth).
-
-    Shape: (H, W) — same spatial dimensions as the camera image.
-    Value: depth in metres at each pixel (0 = no LiDAR return here).
     """
     H, W     = img_shape[:2]
     depth_map = np.zeros((H, W), dtype=np.float32)
@@ -138,9 +125,7 @@ def build_depth_map(img_shape, u, v, depth):
 # In[5]:
 
 
-# =============================================================================
-# COMPONENT 3 — Build fused RGBD image
-# =============================================================================
+#Build fused RGBD image
 def build_rgbd(img, depth_map):
     """
     Concatenates the RGB image with the depth map to create a 4-channel
@@ -149,10 +134,6 @@ def build_rgbd(img, depth_map):
     The depth channel is normalized to [0, 1] so it's on the same scale
     as the RGB channels (which are already 0–1 from plt.imread).
 
-    Shape: (H, W, 4) — [Red, Green, Blue, NormalizedDepth]
-
-    This 4-channel tensor is what would be passed into a fusion-aware
-    CNN in a full deep learning pipeline.
     """
     depth_norm = np.clip(depth_map / MAX_DEPTH, 0, 1)     # normalize to [0,1]
     rgbd = np.dstack([img, depth_norm])                    # (H, W, 4)
@@ -164,9 +145,7 @@ def build_rgbd(img, depth_map):
 # In[6]:
 
 
-# =============================================================================
-# COMPONENT 4 — Depth-aware detection filter
-# =============================================================================
+#Depth-aware detection filter
 def filter_detections_by_depth(detections, depth_map, depth_tolerance=5.0):
     """
     Enhances each DETR detection with depth information from the LiDAR.
@@ -177,13 +156,6 @@ def filter_detections_by_depth(detections, depth_map, depth_tolerance=5.0):
       3. Flag detections where LiDAR has insufficient coverage (< 5% of box)
          as 'depth_uncertain' — these are likely false positives
 
-    This is the fusion payoff: camera gives us the box, LiDAR gives us
-    the depth — together we get a pseudo-3D detection.
-
-    Returns enhanced detections with added keys:
-      estimated_depth  : median LiDAR depth inside the box (metres)
-      depth_coverage   : fraction of box pixels with LiDAR returns
-      depth_uncertain  : True if LiDAR coverage is too sparse to trust
     """
     enhanced = []
     for det in detections:
@@ -213,9 +185,7 @@ def filter_detections_by_depth(detections, depth_map, depth_tolerance=5.0):
 # In[7]:
 
 
-# =============================================================================
-# COMPONENT 5 — Visualizations
-# =============================================================================
+# Visualizations
 def plot_projection_overlay(img, u, v, depth):
     """Overlays projected LiDAR points on the camera image, colored by depth."""
     fig, ax = plt.subplots(1, figsize=(14, 5))
@@ -296,7 +266,7 @@ def plot_rgbd_channels(rgbd):
     plt.show()
 
 
-# In[10]:
+# In[9]:
 
 
 print(f"\n{'='*50}")
@@ -309,15 +279,15 @@ points = load_lidar(FRAME_ID)
 calib  = load_calib(FRAME_ID)
 gt_df  = load_labels(FRAME_ID)
 
-# Component 1 — build projection matrix & project LiDAR → image
+# build projection matrix & project LiDAR → image
 proj   = build_projection_matrix(calib)
 u, v, depth, valid_idx = project_lidar_to_image(points, proj, img.shape)
 print(f"Projected {len(u):,} of {len(points):,} LiDAR points onto image plane\n")
 
-# Component 2 — depth map
+# depth map
 depth_map = build_depth_map(img.shape, u, v, depth)
 
-# Component 3 — RGBD tensor
+# RGBD tensor
 rgbd = build_rgbd(img, depth_map)
 
 # Visualizations
@@ -325,7 +295,7 @@ plot_projection_overlay(img, u, v, depth)
 plot_depth_map(depth_map)
 plot_rgbd_channels(rgbd)
 
-# Component 4 — load Phase 2 detections and enhance with depth
+# load Phase 2 detections and enhance with depth
 from cameraonly import load_detector, detect_objects
 detector     = load_detector()
 detections   = detect_objects(detector, FRAME_ID)
@@ -338,7 +308,7 @@ for d in enhanced:
     print(f"{d['label']:12s} {d['score']:>6.3f} "
             f"{d['estimated_depth']:>9.1f}m "
             f"{d['depth_coverage']:>9.1%} "
-            f"{'YES ⚠' if d['depth_uncertain'] else 'no':>10s}")
+            f"{'YES' if d['depth_uncertain'] else 'no':>10s}")
 
 plot_fusion_detections(img, enhanced, gt_df)
 
